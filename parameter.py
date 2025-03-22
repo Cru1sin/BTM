@@ -1,7 +1,5 @@
 import numpy as np
 
-from scipy.interpolate import interp2d
-
 # 给定的表格数据
 m_clnt_vector = np.array([0.144, 0.180, 0.216])
 T_air_vector = np.array([26, 27.5, 29, 30.5, 32, 33.5, 35, 36.5, 38, 39.5])
@@ -83,38 +81,3 @@ lamda6_table = np.array([
     [-4858.858460, -6257.975420, -7878.040565],
     [-4990.538277, -6412.729674, -7934.525651]
 ])
-
-# 使用 interp2d 进行插值
-interp_lamda1 = interp2d(m_clnt_vector, T_air_vector, lamda1_table, kind='linear')
-interp_lamda2 = interp2d(m_clnt_vector, T_air_vector, lamda2_table, kind='linear')
-interp_lamda3 = interp2d(m_clnt_vector, T_air_vector, lamda3_table, kind='linear')
-interp_lamda4 = interp2d(m_clnt_vector, T_air_vector, lamda4_table, kind='linear')
-interp_lamda5 = interp2d(m_clnt_vector, T_air_vector, lamda5_table, kind='linear')
-interp_lamda6 = interp2d(m_clnt_vector, T_air_vector, lamda6_table, kind='linear')
-
-
-# 设定插值点
-m_clnt_val = 0.18
-T_air_val = 30
-
-# 计算 lambda1
-lambda1 = interp_lamda1(m_clnt_val, T_air_val)[0]
-
-# 设定其他变量值
-P_comp = 500  # W
-T_clnt_out = 35  # ℃
-T_amb = 30  # ℃
-m_air = 1.2  # kg/s
-m_clnt = 0.18  # kg/s
-
-# 计算 Q_cooling (假设 lambda2~lambda6 也已插值得到)
-lambda2 = -0.0003
-lambda3 = -10100
-lambda4 = 25
-lambda5 = 58000
-lambda6 = -6000
-
-Q_cooling = (lambda1 * P_comp + lambda2 * P_comp**2 + lambda3 * T_clnt_out +
-             lambda4 * T_amb * m_air + lambda5 * T_clnt_out * m_clnt + lambda6)
-
-print(f"冷却功率 Q_cooling = {Q_cooling:.2f} W")

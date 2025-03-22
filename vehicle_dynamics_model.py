@@ -100,7 +100,7 @@ class Vehicle:
 
         self.velocity = v_pred
         self.P_trac = P_trac
-        return P_trac
+        return P_trac, v_pred
 
 
 
