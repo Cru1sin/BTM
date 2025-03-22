@@ -1,41 +1,73 @@
-from CoolProp.CoolProp import PropsSI
+from scipy.interpolate import interp2d
 import numpy as np
-from bin.math_utils import (
-    exp, log, max, min, sqrt, power,
-    if_else, logical_eq, logical_le
-)
-from sklearn.metrics import mean_squared_error, r2_score
-from scipy.interpolate import CubicSpline
-import casadi as ca
-PI = 3.14
-
-from CoolingSystem.CoolingSystem import CoolingSystem
-
-
+from parameter import m_clnt_vector, T_air_vector, lamda1_table, lamda2_table, lamda3_table, lamda4_table, lamda5_table, lamda6_table
+from math import exp
+from CoolingSystem import CoolingSystem
 class SimpleCoolingSystem(CoolingSystem):
     """
     一个简单的液体冷却系统，假设传热方式为对流换热
     """
     def __init__(self, dt, T_amb):
+        """
+        初始化冷却系统
+        :param dt: 采样时间
+        :param T_amb: 环境温度
+        """
         super().__init__(dt, T_amb)
 
-    def battery_cooling(self, T_bat, n_pump):
+        # 保存插值函数的字典
+        self.interp_funcs = {}
+
+        # 构建插值函数
+        self.interp_funcs["lambda1"] = interp2d(m_clnt_vector, T_air_vector, lamda1_table, kind='linear')
+        self.interp_funcs["lambda2"] = interp2d(m_clnt_vector, T_air_vector, lamda2_table, kind='linear')
+        self.interp_funcs["lambda3"] = interp2d(m_clnt_vector, T_air_vector, lamda3_table, kind='linear')
+        self.interp_funcs["lambda4"] = interp2d(m_clnt_vector, T_air_vector, lamda4_table, kind='linear')
+        self.interp_funcs["lambda5"] = interp2d(m_clnt_vector, T_air_vector, lamda5_table, kind='linear')
+        self.interp_funcs["lambda6"] = interp2d(m_clnt_vector, T_air_vector, lamda6_table, kind='linear')
+
+        # 默认的冷却剂质量流量和空气温度
+        self.massflow_clnt = 0.18 
+        self.massflow_air = 1.2
+
+    def get_lambda(self, lambda_name):
+        """
+        获取插值后的 lambda 值
+        :param lambda_name: lambda 名称，如 "lambda1"
+        :return: 插值后的 lambda 值
+        """
+        return self.interp_funcs[lambda_name](self.massflow_clnt, self.T_amb)[0]
+
+    def battery_cooling(self, T_bat, P_comp, v_veh):
         """
         计算冷却量 Q_cool (W)
-        Q_cool = h * A * (T_bat - T_clnt_in)
+        Q_cool = lambda1 * P_comp + lambda2 * P_comp**2 + lambda3 * T_clnt_out +
+                 lambda4 * T_amb * m_air + lambda5 * T_clnt_out * m_clnt + lambda6
         """
-        self.n_pump = n_pump
-        Q_cool = self.h_bat * self.A_bat * (T_bat - self.T_clnt_in)
-        return Q_cool
+        # 获取插值后的 lambda 值
+        lambda1 = self.get_lambda("lambda1")
+        lambda2 = self.get_lambda("lambda2")
+        lambda3 = self.get_lambda("lambda3")
+        lambda4 = self.get_lambda("lambda4")
+        lambda5 = self.get_lambda("lambda5")
+        lambda6 = self.get_lambda("lambda6")
 
-    def power(self, n_pump):
-        """
-        计算泵的功率消耗 P_pump (W)
-        P_pump = k_pump * n_pump^3
-        """
-        k_pump = 1e-6  # 假设泵的功率常数
-        P_pump = k_pump * (n_pump ** 3)
-        return P_pump
+        T_clnt_out = (self.T_clnt_in - T_bat) * exp(-(self.h_bat * self.A_bat) / (self.massflow_clnt * self.capacity_clnt)) + T_bat # 冷却剂出口温度 (℃)
+        massflow_air = 0.07065 + 0.00606 * v_veh  # 空气质量流量 (kg/s)
+        # 计算 Q_cooling
+        Q_cooling = (
+            lambda1 * P_comp +
+            lambda2 * P_comp**2 +
+            lambda3 * T_clnt_out +
+            lambda4 * self.T_amb * massflow_air +
+            lambda5 * T_clnt_out * self.massflow_clnt +
+            lambda6
+        )
+
+        self.T_clnt_in = T_clnt_out - Q_cooling / (self.massflow_clnt * self.capacity_clnt)  # 更新冷却剂入口温度
+
+        return Q_cooling
+
 
 
 # **测试模型**
@@ -45,10 +77,9 @@ if __name__ == "__main__":
     cooling_system = SimpleCoolingSystem(dt, T_amb)
 
     T_bat = 40  # 当前电池温度 (℃)
-    n_pump = 2000  # 泵转速 (rpm)
+    P_comp = 800  # 压缩机功率 (W)
+    v_veh = 10  # 车辆速度 (m/s)
 
-    Q_cool = cooling_system.battery_cooling(T_bat, n_pump)
-    P_pump = cooling_system.power(n_pump)
+    Q_cool = cooling_system.battery_cooling(T_bat, P_comp, v_veh)
 
     print(f"冷却量 Q_cool: {Q_cool:.2f} W")
-    print(f"泵功率消耗 P_pump: {P_pump:.2f} W")

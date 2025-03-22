@@ -8,7 +8,7 @@ class CoolingSystem(ABC):
         """
         Battery
         """
-        self.A_bat = 12   # 电池包的冷却表面积(m^2) 假设电池包尺寸为 1.0 * 1.0 * 0.3
+        self.A_bat = 1.57   # 电池包的冷却表面积(m^2) 假设电池包尺寸为 1.0 * 1.0 * 0.3
         self.h_bat = 300 # Heat transfer coefficient h (W/(m2 ℃))
         self.T_amb = T_amb # Ambient temperature (℃)
 
@@ -21,9 +21,10 @@ class CoolingSystem(ABC):
         self.mu_clnt = 1.1e-3      # 动力粘度 (Pa·s)
         self.V_pump = 33*1e-6 # Displacement volume of pump (m^3/rev)
         self.T_clnt_in = 20 # the coolant temperature at the inlet of the pipe in battery pack        
+        self.T_clnt_out = T_amb # the coolant temperature at the outlet of the pipe in battery pack        
 
         '''
-        Control variables
+        Control variables if need
         '''
         self.massflow_clnt = 0  # Mass flow rate of coolant (Kg/s)
         self.n_pump = 0 # Pump speed (rpm)
