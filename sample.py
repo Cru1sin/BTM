@@ -2,6 +2,7 @@ from scipy.interpolate import RegularGridInterpolator
 import numpy as np
 from parameter import m_clnt_vector, T_air_vector, lamda1_table, lamda2_table, lamda3_table, lamda4_table, lamda5_table, lamda6_table
 from math import exp
+from casadi import if_else
 from CoolingSystem import CoolingSystem
 class SimpleCoolingSystem(CoolingSystem):
     """
@@ -69,12 +70,10 @@ class SimpleCoolingSystem(CoolingSystem):
         Q_cool = lambda1 * P_comp + lambda2 * P_comp**2 + lambda3 * T_clnt_out +
                  lambda4 * T_amb * m_air + lambda5 * T_clnt_out * m_clnt + lambda6
         """
-        
-
         T_clnt_out = (self.T_clnt_in - T_bat) * exp(-(self.h_bat * self.A_bat) / (self.massflow_clnt * self.capacity_clnt)) + T_bat # 冷却剂出口温度 (℃)
         massflow_air = 0.07065 + 0.00606 * v_veh  # 空气质量流量 (kg/s)
         # 计算 Q_cooling
-        Q_cooling = (
+        Q_cooling = if_else(P_comp < 500, 0.0,
             self.lambda1 * P_comp +
             self.lambda2 * P_comp**2 +
             self.lambda3 * T_clnt_out +

@@ -42,8 +42,9 @@ class MPCController:
         # CasADi优化器
         self.opti = ca.Opti()
 
-        self.Q = 1e5  # 温度误差权重
-        self.R = 1e-2  # 控制能耗权重
+        self.Q = 1.0  # 温度误差权重
+        self.R = 5e-7  # 控制能耗权重
+        self.S = 5e-6 # 控制变化率权重
 
         # 状态变量：电池温度
         self.opt_states = self.opti.variable(N + 1, 1)  # (N+1) x 1
@@ -71,14 +72,16 @@ class MPCController:
             # 计算冷却功率: battery_cooling(self, T_bat, P_comp, v_veh)
             Q_cool = self.cs.battery_cooling(self.temp[i], self.comp_power[i], self.opt_vehicle_speed[i, 0])
 
-            # 计算下一步电池温度: battery_thermal_model(self, Q_cool, P_trac+P_cool, T_bat)
-            temp_next = self.bm.battery_thermal_model(Q_cool, self.opt_traction_power[i, 0] + self.comp_power[i], self.temp[i])
+            # 计算下一步电池温度: battery_thermal_model(self, Q_cool, P_trac+P_cool+200, T_bat)
+            temp_next = self.bm.battery_thermal_model(Q_cool, self.opt_traction_power[i, 0] + self.comp_power[i] + 200, self.temp[i])
 
             # 状态转移约束
             self.opti.subject_to(self.temp[i + 1] == temp_next)
 
             # 目标: 最小化温度偏差和控制能耗
             obj += self.Q * (self.temp[i] - self.T_opt) ** 2 + self.R * (self.comp_power[i] ** 2)
+            if i > 0:
+                obj += self.S * (self.comp_power[i] - self.comp_power[i-1]) ** 2
 
         # 目标函数
         self.opti.minimize(obj)
@@ -141,7 +144,7 @@ if __name__ == "__main__":
 
     mpc = MPCController(bm, cs, ev, N=100, dt=1)
 
-    T_current = 30.0  # 当前温度
+    T_current = 25.0  # 当前温度
 
     # 求解最优控制
     solution = mpc.solve(T_current)

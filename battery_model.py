@@ -13,9 +13,20 @@ class Battery_Model:
         self.R_bat = 6 * 1e-3  # 假定电池包内阻 (Ω)
 
         self.SOC = 1 # 电池初始的SOC
+        self.N_cycle = 0 # 电池的循环次数
         self.capacity_bat_elec = 100 # 电池的电量 (Ah) 5 * 20 = 100 
 
         self.dt = dt # 采样时间 dt (s), example dt = 0.1
+
+        self.N_series = 100
+        self.N_parallel = 22
+        self.N_cell = self.N_series * self.N_parallel
+        self.Ah_cell = 3
+
+    def update_parameters(self):
+        OCV_cell = (0.882 - 9.5 * 1e-5 * self.N_cycle) * self.SOC + 3.3
+        self.U_oc = self.N_series * OCV_cell
+        
 
     def battery_reset(self):
         self.M_bat = 40 # Battery thermal mass (kg) = 0.145 * 100 * 20 = 290
