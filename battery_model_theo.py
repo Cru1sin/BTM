@@ -9,7 +9,7 @@ class Battery_Model(Battery):
     def __init__(self, dt):
         super().__init__(dt)
 
-    def battery_thermal_model(self, current, Q_cool, T_bat):
+    def battery_thermal_model(self, current, Q_cool, T_bat, SOH):
         """
         根据电流和电池温度计算生成热
         :param current: 电池的电流 (A)
@@ -22,9 +22,11 @@ class Battery_Model(Battery):
 
         P_bat = (self.U_oc - current * R_bat) * current
 
-        self.update_SOC_OCV(current)
+        self.update_SOC_OCV_Ah(current, T_bat)
 
-        return T_bat_next, P_bat
+        SOH_next = self.update_soh(current, T_bat, SOH)
+
+        return T_bat_next, P_bat, SOH_next
 
 
 def generate_cooling_values(N, dt):

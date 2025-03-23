@@ -1,6 +1,6 @@
 import numpy as np
 import casadi as ca
-from battery_model import Battery_Model
+from battery_model_theo import Battery_Model
 from sample import SimpleCoolingSystem
 from vehicle_dynamics_model import Vehicle
 
