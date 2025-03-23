@@ -2,26 +2,32 @@ from CoolProp.CoolProp import PropsSI
 import numpy as np
 import math
 from math_utils import sqrt
-from BatteryModel import Battery
+from battery_model import Battery_Model
 
-class Battery_Model(Battery):
+class Battery_Model_actual(Battery_Model):
     def __init__(self, dt):
         super().__init__(dt)
+        self.Ah_bat_actual = self._apply_random_mask(self.Ah_bat_actual, std=0.01)
+        self.SOH = self.Ah_bat_actual / self.Ah_bat_initial
 
-    def R_int(self, I_bat):
-        """
-        根据C-rate更新电池内阻，并应用随机分布模拟电池特性
-        :param c_rate: 电池的C-rate
-        """
-        # 基础内阻计算
-        c_rate = I_bat / self.Ah_bat_initial
-        self.R_bat = self._calculate_base_internal_resistance(c_rate)
-        return self.R_bat
-    
-    def U_oc(self):
+    def R_int_actual(self, I_bat):
+        return self._apply_random_mask(self.R_int(I_bat), std=0.1 * self.R_int(I_bat)) 
+
+    def update_parameters(self):
         OCV_cell = (0.882 - 9.5 * 1e-5 * self.N_cycle) * self.SOC + 3.3
         self.U_oc = self.N_series * OCV_cell
-        return self.U_oc
+
+
+    def battery_reset(self):
+        self.M_bat = 40 # Battery thermal mass (kg) = 0.145 * 100 * 20 = 290
+        self.capacity_bat_thermal = 1350  # Battery specific heat capacity (J/kg·K)
+        self.entropy_coefficient = 0.06  # 电池的熵系数 (V/K)
+
+        self.U_oc = 320 # 假定开路电压 (V) = 3.2 * 100
+        self.R_bat = 6 * 1e-3  # 假定电池包内阻 (Ω)
+
+        self.SOC = 1 # 电池初始的SOC
+        self.capacity_bat_elec = 100 # 电池的电量 (Ah) 5 * 20 = 100 
 
     def battery_thermal_generation(self, P_bat, T_bat):
         """
@@ -67,6 +73,15 @@ class Battery_Model(Battery):
         # print('电池发热量: ', Q_gen)
         T_bat_next = ((-Q_cool + Q_gen) / (self.M_bat * self.capacity_bat_thermal)) + T_bat
         return T_bat_next
+    
+    def _apply_random_mask(self, value, std):
+        """
+        使用正态分布随机化参数
+        :param value: 原始值
+        :param std: 标准差
+        :return: 随机化后的值
+        """
+        return np.random.normal(value, std)
 
 
 def generate_cooling_values(N, dt):

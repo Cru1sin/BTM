@@ -70,20 +70,34 @@ class SimpleCoolingSystem(CoolingSystem):
         Q_cool = lambda1 * P_comp + lambda2 * P_comp**2 + lambda3 * T_clnt_out +
                  lambda4 * T_amb * m_air + lambda5 * T_clnt_out * m_clnt + lambda6
         """
-        T_clnt_out = (self.T_clnt_in - T_bat) * exp(-(self.h_bat * self.A_bat) / (self.massflow_clnt * self.capacity_clnt)) + T_bat # 冷却剂出口温度 (℃)
         massflow_air = 0.07065 + 0.00606 * v_veh  # 空气质量流量 (kg/s)
         # 计算 Q_cooling
         Q_cooling = if_else(P_comp < 500, 0.0,
             self.lambda1 * P_comp +
             self.lambda2 * P_comp**2 +
-            self.lambda3 * T_clnt_out +
+            self.lambda3 * self.T_clnt_out +
             self.lambda4 * self.T_amb * massflow_air +
-            self.lambda5 * T_clnt_out * self.massflow_clnt +
+            self.lambda5 * self.T_clnt_out * self.massflow_clnt +
             self.lambda6
         )*self.dt
 
-        self.T_clnt_in = T_clnt_out - Q_cooling / (self.massflow_clnt * self.capacity_clnt)  # 更新冷却剂入口温度
-        return Q_cooling
+        """if P_comp < 500:
+            Q_cooling = 0.0
+        else:
+            Q_cooling = (self.lambda1 * P_comp +
+                self.lambda2 * P_comp**2 +
+                self.lambda3 * self.T_clnt_out +
+                self.lambda4 * self.T_amb * massflow_air +
+                self.lambda5 * self.T_clnt_out * self.massflow_clnt +
+                self.lambda6
+            )*self.dt"""
+
+        self.T_clnt_in = self.T_clnt_out - Q_cooling / (self.massflow_clnt * self.capacity_clnt)  # 更新冷却剂入口温度
+        
+        self.T_clnt_out = (self.T_clnt_in - T_bat) * exp(-(self.h_bat * self.A_bat) / (self.massflow_clnt * self.capacity_clnt)) + T_bat # 冷却剂出口温度 (℃)
+
+        Q_bat_cooling = self.massflow_clnt * self.capacity_clnt * (self.T_clnt_out - self.T_clnt_in)
+        return Q_bat_cooling
 
 
 
