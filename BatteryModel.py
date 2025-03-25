@@ -1,7 +1,7 @@
 from abc import ABC, abstractmethod
 import numpy as np
 import casadi as ca
-from math import exp
+from math_utils import exp
 
 class Battery(ABC):
     def __init__(self, dt):
@@ -88,7 +88,7 @@ class Battery(ABC):
         :param T_bat: 电池的温度 (℃)
         """
         # 计算C-rate
-        c_rate = abs(current) / self.Ah_bat_initial
+        c_rate = ca.fabs(current) / self.Ah_bat_initial
         # 计算循环老化
         aging_rate = self._calculate_aging_rate(c_rate, T_bat)
         SOH -= aging_rate * self.dt / 100
@@ -114,9 +114,17 @@ class Battery(ABC):
         :return: 老化速率 (1/day)
         """
         # 老化因子
-        Af, B = ca.if_else(c_rate <= 2, (3814.7-44.6*2, 21681), ca.if_else(c_rate <= 4, (3814.7-44.6*4, 12934), ca.if_else(c_rate <= 10, (3814.7-44.6*10, 15512), (3814.7-44.6*20, 15512))))
+        Af = ca.if_else(c_rate <= 2, 3814.7 - 44.6 * 2, 
+            ca.if_else(c_rate <= 4, 3814.7 - 44.6 * 4, 
+            ca.if_else(c_rate <= 10, 3814.7 - 44.6 * 10, 
+            3814.7 - 44.6 * 20)))  # Af 计算
+
+        B = ca.if_else(c_rate <= 2, 21681, 
+            ca.if_else(c_rate <= 4, 12934, 
+            ca.if_else(c_rate <= 10, 15512, 
+            15512)))  # B 计算
         z = 0.66  # 幂律因子
-        aging_rate = B * exp(-Af / (T_bat + 273.15)) * (self.capacity_bat_actual ** z)
+        aging_rate = B * exp(-Af / (T_bat + 273.15)) * (self.Ah_bat_actual ** z)
         return aging_rate
 
 

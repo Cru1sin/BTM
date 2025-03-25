@@ -27,6 +27,23 @@ class Battery_Model(Battery):
         SOH_next = self.update_soh(current, T_bat, SOH)
 
         return T_bat_next, P_bat, SOH_next
+    
+    def battery_thermal_model2(self, current, Q_cool, T_bat):
+        """
+        根据电流和电池温度计算生成热
+        :param current: 电池的电流 (A)
+        :param T_bat: 电池的温度 (℃)
+        :return: 生成热 (W), 电池工作功率
+        """
+        R_bat = self.R_int(current)
+        Q_gen = current**2 * R_bat + ca.fabs(current) * (T_bat + 273.15) * self.entropy_coefficient
+        T_bat_next = ((-Q_cool + Q_gen) / (self.M_bat * self.capacity_bat_thermal)) + T_bat
+
+        P_bat = (self.U_oc - current * R_bat) * current
+
+        self.update_SOC_OCV_Ah(current, T_bat)
+
+        return T_bat_next, P_bat
 
 
 def generate_cooling_values(N, dt):
