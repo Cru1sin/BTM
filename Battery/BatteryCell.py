@@ -1,7 +1,4 @@
 from abc import ABC, abstractmethod
-import numpy as np
-import casadi as ca
-from utils.math_utils import exp
 from SOH.inference import SOH_predictor
 
 class BatteryCell(ABC):
@@ -45,7 +42,6 @@ class BatteryCell(ABC):
         """
         delta_Q = I_cell * self.dt / 3600
         delta_soc = delta_Q / self.Ah_cell_actual
-        self.N_cycle += ca.fabs(delta_soc)
         SOC -= delta_soc
         return SOC
 

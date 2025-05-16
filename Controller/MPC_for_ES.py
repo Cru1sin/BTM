@@ -2,7 +2,6 @@ import numpy as np
 import casadi as ca
 from Battery.BatteryPack import BatteryPack as Battery
 from CoolingSystem.CS_for_ES import SimpleCoolingSystem as CoolingSystem
-from EnergyStorageSystem.TargetPower import TARGET as P_RE
 
 class MPCController:
     """
@@ -19,8 +18,8 @@ class MPCController:
     3. 保证电解槽恒定功率供给
     """
     
-    def __init__(self, battery_model, cooling_system, 
-                initial_temp=30, T_opt=25, P_target=142.3*1000, N=24, dt=3600, P_comp_limits=(0, 4500)):
+    def __init__(self, battery_model, cooling_system, P_RE,
+                initial_temp=30, T_opt=25, P_target=142.3*1000, N=24, dt=3600, P_comp_limits=(0, 4000)):
         """
         初始化电池温度MPC控制器
         - param battery_model: 电池热模型实例
@@ -100,7 +99,7 @@ class MPCController:
             # 权重系数
             omega_temp = 1      # 温度偏差权重
             omega_dcomp = 1e-6    # 压缩机功率变化率权重
-            omega_comp = 0     # 压缩机功率权重
+            omega_comp = 1e-6     # 压缩机功率权重
             omega_I_pack = 1e-6  # 电池pack的电流权重
             # 温度优化目标
             temp_obj = omega_temp * (self.temp[i+1] - self.T_opt)**2

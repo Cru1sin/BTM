@@ -56,12 +56,12 @@ TARGET = 142300 - POWER
 # 绘图
 import matplotlib.pyplot as plt
 
-plt.figure(figsize=(10, 5))
+"""plt.figure(figsize=(10, 5))
 plt.plot(P_RE_SECOND, label='Original Power')
 plt.plot(noisy_power, label='Noisy Power')
 plt.plot(TARGET, label='Target Power')
 plt.legend()
-plt.show()
+plt.show()"""
 
 Q = [4.5, 7.5, 0, 0, 0, 0, 3, -11, -4, 0, 0, 0, 3, 8, 1, -1, -1, 10, 0, 0, 0, -10, -8, 0]
 

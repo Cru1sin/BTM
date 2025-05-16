@@ -7,7 +7,7 @@ from datetime import datetime
 from Battery.BatteryPack import BatteryPack as Battery
 from CoolingSystem.CS_for_ES import SimpleCoolingSystem
 from Controller.MPC_for_ES import MPCController
-from EnergyStorageSystem.TargetPower import TARGET as P_RE
+from EnergyStorageSystem.TargetPower import TARGET
 from utils import plot_results
 from SOH.inference import SOH_predictor
 
@@ -18,7 +18,7 @@ def get_args():
     # 仿真参数
     parser.add_argument('--dt', type=int, default=1, help='时间步长（秒）')
     parser.add_argument('--N', type=int, default=30, help='MPC预测时域')
-    parser.add_argument('--n_control', type=int, default=3, help='每次应用的控制步数')
+    parser.add_argument('--n_control', type=int, default=1, help='每次应用的控制步数')
     parser.add_argument('--total_steps', type=int, default=4000, help='总仿真步数（秒）')
     
     # 系统初始状态
@@ -83,9 +83,13 @@ def initialize_system(args):
     # 初始化冷却系统模型
     cs_for_control = SimpleCoolingSystem(args.dt, T_amb=args.T_amb)
     cs_for_simulation = SimpleCoolingSystem(args.dt, T_amb=args.T_amb)
+
+    # 更新电池模型参数
+    for i in [bm_for_control, bm_for_simulation]:
+        i.update_parameters(I_cell=1e-8, T_bat=args.init_temp, SOC=args.init_soc)
     
     # 初始化MPC控制器
-    mpc = MPCController(bm_for_control, cs_for_control, N=args.N, dt=args.dt)
+    mpc = MPCController(bm_for_control, cs_for_control, TARGET, N=args.N, dt=args.dt)
     
     # 记录初始参数
     log_system_parameters(args)
@@ -104,8 +108,8 @@ def update_state(i, args, cs, bm, current_temp, comp_power, SOC):
     参数:
         i: 当前时间步
         args: 命令行参数对象
-        cs: 冷却系统模型
-        bm: 电池模型
+        cs: 仿真冷却系统模型
+        bm: 仿真电池模型
         current_temp: 当前温度
         comp_power: 压缩机功率
         SOC: 当前SOC
@@ -115,9 +119,8 @@ def update_state(i, args, cs, bm, current_temp, comp_power, SOC):
     P_cool = comp_power + args.BTM_power_base
     
     # 计算功率缺口和所需电流
-    P_gap = P_RE[i*args.dt] + P_cool
-    I_pack_need = bm.Current_Pack2Cell(P_gap)
-    I_pack = np.clip(I_pack_need, bm.I_min_limit, bm.I_max_limit)
+    P_gap = TARGET[int(i*args.dt)] + P_cool
+    I_pack = np.clip(bm.Current_Pack2Cell(P_gap), bm.I_min_limit, bm.I_max_limit)
     
     # 更新电池状态
     temp_next, P_response, SOC_next, Q_gen, Q_ambient = bm.battery_model(
@@ -140,12 +143,12 @@ def update_state(i, args, cs, bm, current_temp, comp_power, SOC):
     # 记录状态信息
     if i % args.log_interval == 0:
         log_state_info(i, args, current_temp, comp_power, Q_cool, Q_gen, Q_ambient,
-                      I_pack, P_response, SOC_next, bm, P_RE[i*args.dt], SOH_loss, temp_noise)
+                      I_pack, P_response, SOC_next, bm, TARGET[int(i*args.dt)], SOH_loss, temp_noise)
     
     return temp_next, SOC_next, SOH_loss, I_pack
 
 def log_state_info(i, args, current_temp, comp_power, Q_cool, Q_gen, Q_ambient,
-                  I_pack, P_response, SOC_next, bm, P_RE, SOH_loss, temp_noise):
+                  I_pack, P_response, SOC_next, bm, TARGET, SOH_loss, temp_noise):
     """记录系统状态信息"""
     logging.info(f"\n第{(i+1)*args.dt}秒系统状态:")
     logging.info(f"温度: {float(current_temp):.2f}℃, 温度扰动: {float(temp_noise):.3f}℃")
@@ -156,52 +159,104 @@ def log_state_info(i, args, current_temp, comp_power, Q_cool, Q_gen, Q_ambient,
     logging.info(f"电池Pack电流限制: 放电{float(bm.I_max_limit):.2f}A, 充电{float(bm.I_min_limit):.2f}A")
     logging.info(f"SOC: {SOC_next*100:.2f}%")
     logging.info(f"电池电压: {float(bm.OCV - I_pack/bm.N_parallel*bm.R_cell):.2f}V")
-    logging.info(f"发电功率: {float(P_RE):.2f}W")
+    logging.info(f"发电功率: {float(TARGET):.2f}W")
     logging.info(f"SOH损耗: {float(SOH_loss)}")
 
-def run_mpc_simulation(args, mpc, bm_for_simulation, cs_for_simulation):
-    """运行MPC仿真"""
+def save_checkpoint(args, i, current_temp, comp_power, current_SOC, log_dir):
+    """保存断点状态"""
+    checkpoint_dir = os.path.join(log_dir, "checkpoints")
+    os.makedirs(checkpoint_dir, exist_ok=True)
+    
+    checkpoint_file = os.path.join(checkpoint_dir, "last_state.npz")
+    np.savez(checkpoint_file,
+             step=i,
+             temperature=current_temp,
+             comp_power=comp_power,
+             SOC=current_SOC)
+    logging.info(f"保存断点状态: 时间步={i}, 温度={float(current_temp):.2f}℃, SOC={float(current_SOC):.2f}")
+
+def load_checkpoint(log_dir):
+    """加载断点状态"""
+    checkpoint_file = os.path.join(log_dir, "checkpoints", "last_state.npz")
+    if os.path.exists(checkpoint_file):
+        data = np.load(checkpoint_file)
+        logging.info(f"加载断点状态: 时间步={data['step']}, 温度={data['temperature']:.2f}℃, SOC={data['SOC']:.2f}")
+        return data['step'], data['temperature'], data['comp_power'], data['SOC']
+    return None
+
+def run_mpc_simulation(args, mpc, bm_for_simulation, cs_for_simulation, log_dir):
+    """运行MPC仿真，solve失败时使用上一次状态重试"""
     # 初始化状态
+    i = 0
     current_temp = args.init_temp
     comp_power = 0
     current_SOC = args.init_soc
+    logging.info("开始MPC控制仿真")
 
     # 存储结果
     control_sequence = []
     state_trajectory = []
     time_points = []
     
+    # 记录上一次成功求解的状态
+    last_successful_state = {
+        'temp': current_temp,
+        'soc': current_SOC,
+        'comp_power': comp_power,
+        'step': i
+    }
+    
     # 滚动优化
-    i = 0
     while i < args.total_steps:
         remaining_steps = args.total_steps - i
         if remaining_steps < mpc.N:
             break
 
         # 求解最优控制
-        solution = mpc.solve(i, current_temp, current_SOC, comp_power)
-        if solution is None:
-            logging.error(f"第{i}步优化求解失败，终止仿真")
-            break
+        try: 
+            solution = mpc.solve(i, current_temp, current_SOC, comp_power)
+        except Exception as e:
+            logging.warning(f"第{i}步优化求解失败，使用上一次成功状态重试")
+            current_temp = last_successful_state['temp']
+            current_SOC = last_successful_state['soc']
+            comp_power = last_successful_state['comp_power']
+            i = last_successful_state['step']
+            continue
         
         # 应用控制并更新状态
         for j in range(args.n_control):
             if i + j >= args.total_steps:
                 break
                 
-            comp_power = solution['control_sequence'][j]
+            comp_power = solution['control_sequence'][j][0]
             
-            current_temp, percent, current_SOC, SOH_total_loss, current = update_state(
+            current_temp, current_SOC, SOH_total_loss, I_pack = update_state(
                 i+j, args, cs_for_simulation, bm_for_simulation,
                 current_temp, comp_power, current_SOC
             )
             
+            # 检查状态是否有效
+            if not np.isfinite(current_temp) or not np.isfinite(current_SOC):
+                logging.warning(f"第{i+j}步状态更新无效，使用上一次成功状态重试")
+                current_temp = last_successful_state['temp']
+                current_SOC = last_successful_state['soc']
+                comp_power = last_successful_state['comp_power']
+                i = last_successful_state['step']
+                break
+            
             time_points.append(i+j+1)
             control_sequence.append([float(comp_power)])
-            state_trajectory.append([float(current_temp), float(percent), 
-                                   float(current_SOC), float(SOH_total_loss)])
+            state_trajectory.append([float(current_temp), float(current_SOC), float(SOH_total_loss), float(I_pack)])
         
         i += args.n_control
+
+        if j == args.n_control - 1:
+            last_successful_state.update({
+                'temp': current_temp,
+                'soc': current_SOC,
+                'comp_power': comp_power,
+                'step': i
+            })
     
     return np.array(control_sequence), np.array(state_trajectory), np.array(time_points)
 
@@ -252,7 +307,7 @@ def main():
     
     # 4. 运行MPC仿真
     control_sequence, state_trajectory, time_points = run_mpc_simulation(
-        args, mpc, bm_for_simulation, cs_for_simulation
+        args, mpc, bm_for_simulation, cs_for_simulation, log_dir
     )
     
     # 5. 检查数据一致性

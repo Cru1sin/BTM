@@ -1,6 +1,3 @@
-from CoolProp.CoolProp import PropsSI
-import numpy as np
-import math
 from utils.math_utils import sqrt, min, max
 from Battery.BatteryCell import BatteryCell
 
