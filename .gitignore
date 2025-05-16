@@ -26,3 +26,17 @@ dist/
 # 日志和临时文件
 *.log
 *.tmp
+
+# MacOS文件
+.DS_STORE
+
+# 结果文件
+logs/
+results/
+SOH/results/
+SOH/results analysis/
+SOH/results of reviewer/
+
+# 数据文件
+SOH/data/
+SOH/data analysis/

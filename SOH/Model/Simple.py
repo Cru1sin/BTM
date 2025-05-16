@@ -2,10 +2,10 @@ import torch
 import torch.nn as nn
 import numpy as np
 from torch.autograd import grad
-from utils.util import AverageMeter,get_logger,eval_metrix
+from SOH.utils.util import AverageMeter,get_logger,eval_metrix
 import os
 import wandb
-device = 'cuda' if torch.cuda.is_available() else 'mps' if torch.backends.mps.is_available() else 'cpu'
+device = 'cuda' if torch.cuda.is_available() else 'cpu'
 # device = 'cpu'
 
 class Sin(nn.Module):
@@ -16,7 +16,7 @@ class Sin(nn.Module):
         return torch.sin(x)
 
 class MLP(nn.Module):
-    def __init__(self,input_dim=20,output_dim=1,layers_num=4,hidden_dim=100,droupout=0.3):
+    def __init__(self,input_dim=6,output_dim=1,layers_num=4,hidden_dim=100,droupout=0.3):
         super(MLP, self).__init__()
 
         assert layers_num >= 2, "layers must be greater than 2"
@@ -80,7 +80,7 @@ class Predictor(nn.Module):
 class Solution_u(nn.Module):
     def __init__(self):
         super(Solution_u, self).__init__()
-        self.encoder = MLP(input_dim=20,output_dim=100,layers_num=4,hidden_dim=100,droupout=0.3)
+        self.encoder = MLP(input_dim=6,output_dim=100,layers_num=4,hidden_dim=100,droupout=0.3)
         self.predictor = Predictor(input_dim=100)
         self._init_()
 
@@ -89,10 +89,10 @@ class Solution_u(nn.Module):
 
     def forward(self,x):
         batch_size, small_batch, input_dim = x.shape
-        x = x.reshape(-1, input_dim)  # (batch_size * 126, 20)
+        x = x.reshape(-1, input_dim)  # (batch_size * 256, 6)
         x = self.encoder(x)
-        x = x.reshape(batch_size, small_batch, -1)  # (batch_size, 126, 100)
-        x = self.predictor(x) # (batch_size, 126, 1)
+        x = x.reshape(batch_size, small_batch, -1)  # (batch_size, 256, 100)
+        x = self.predictor(x) # (batch_size, 256, 1)
         return x
 
     def _init_(self):
@@ -149,7 +149,8 @@ class PINN(nn.Module):
         self.args = args
         if args.save_folder is not None and not os.path.exists(args.save_folder):
             os.makedirs(args.save_folder)
-        log_dir = args.log_dir if args.save_folder is None else os.path.join(args.save_folder, args.log_dir)
+        log_dir = args.log_dir
+        
         self.logger = get_logger(log_dir)
         self._save_args()
 
@@ -229,14 +230,9 @@ class PINN(nn.Module):
         return mse.item()
 
     def forward(self,xt):
-        # dimxt = (batch_size, 126, 20)
-        xt.requires_grad = True
-        x = xt[:,:, 1:]  #(batch_size, 126, 19)
-        t = xt[:,:, 0].unsqueeze(2)  #(batch_size, 126, 1) 每个循环的充电时间
+        # dim xt = (batch_size, 256, 6)
 
-        charge_time = t.sum(dim=1) # (batch_size, 1) 所有循环的充电时间
-
-        u = self.solution_u(torch.cat((x,t),dim=2)) # (batch_size, 126, 20) -> (batch_size, 126, 1)
+        u = self.solution_u(xt) # (batch_size, 256, 6) -> (batch_size, 256, 1)
         u = u.sum(dim=1) # (batch_size, 1)
         
         return u
@@ -372,3 +368,7 @@ if __name__ == "__main__":
     pinn = PINN(args)
     print(pinn.solution_u)
     count_parameters(pinn.solution_u)
+
+
+
+
