@@ -25,7 +25,7 @@ class BatteryCell(ABC):
         self.U_charge_cutoff = 4.2 # 充电截止电压 (V)
         self.U_discharge_cutoff = 2.5 # 放电截止电压 (V)
         self.SOH = 0.8
-        self.SOH_predictor = SOH_predictor(dt,0,100) # SOH模型，用于更新SOH
+        self.SOH_predictor = SOH_predictor(30,0,100) # SOH模型，用于更新SOH
         self.Ah_cell_actual = self.Ah_cell * self.SOH
         self.worktime = 0 # 一个循环内的时间
         # =========================================电池Cell的约束

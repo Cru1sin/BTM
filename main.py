@@ -17,9 +17,10 @@ def get_args():
     
     # 仿真参数
     parser.add_argument('--dt', type=int, default=1, help='时间步长（秒）')
-    parser.add_argument('--N', type=int, default=30, help='MPC预测时域')
-    parser.add_argument('--n_control', type=int, default=1, help='每次应用的控制步数')
-    parser.add_argument('--total_steps', type=int, default=4000, help='总仿真步数（秒）')
+    parser.add_argument('--N', type=int, default=100, help='MPC预测时域')
+    parser.add_argument('--n_control', type=int, default=10, help='每次应用的控制步数')
+    parser.add_argument('--total_steps', type=int, default=3690, help='总仿真步数（秒）')
+    parser.add_argument('--max_retries', type=int, default=5, help='最大重试次数')
     
     # 系统初始状态
     parser.add_argument('--init_temp', type=float, default=25.0, help='电池初始温度（℃）')
@@ -32,7 +33,7 @@ def get_args():
     parser.add_argument('--BTM_power_base', type=float, default=200.0, help='BTMS基础功率（W）')
     
     # 温度扰动参数
-    parser.add_argument('--temp_noise_std', type=float, default=0.1, help='温度高斯扰动标准差（℃）')
+    parser.add_argument('--temp_noise_std', type=float, default=0.01, help='温度高斯扰动标准差（℃）')
     
     # 日志和结果保存
     parser.add_argument('--log_interval', type=int, default=1, help='日志记录间隔（秒）')
@@ -154,35 +155,12 @@ def log_state_info(i, args, current_temp, comp_power, Q_cool, Q_gen, Q_ambient,
     logging.info(f"温度: {float(current_temp):.2f}℃, 温度扰动: {float(temp_noise):.3f}℃")
     logging.info(f"压缩机功率: {float(comp_power):.2f}W")
     logging.info(f"冷却量: {float(Q_cool):.2f}W, 产热量: {float(Q_gen):.2f}W, 环境热交换: {float(Q_ambient):.2f}W")
-    logging.info(f"电池电流: {float(I_pack):.2f}A, 电池功率: {float(P_response):.2f}W")
+    logging.info(f"电池电流: {float(I_pack):.2f}A, 电池功率: {float(P_response):.2f}W, 电池目标功率: {float(TARGET):.2f}W")
     logging.info(f"电池Cell电流限制: 放电{float(bm.max_I_discharge):.2f}A, 充电{float(bm.max_I_charge):.2f}A")
     logging.info(f"电池Pack电流限制: 放电{float(bm.I_max_limit):.2f}A, 充电{float(bm.I_min_limit):.2f}A")
     logging.info(f"SOC: {SOC_next*100:.2f}%")
     logging.info(f"电池电压: {float(bm.OCV - I_pack/bm.N_parallel*bm.R_cell):.2f}V")
-    logging.info(f"发电功率: {float(TARGET):.2f}W")
     logging.info(f"SOH损耗: {float(SOH_loss)}")
-
-def save_checkpoint(args, i, current_temp, comp_power, current_SOC, log_dir):
-    """保存断点状态"""
-    checkpoint_dir = os.path.join(log_dir, "checkpoints")
-    os.makedirs(checkpoint_dir, exist_ok=True)
-    
-    checkpoint_file = os.path.join(checkpoint_dir, "last_state.npz")
-    np.savez(checkpoint_file,
-             step=i,
-             temperature=current_temp,
-             comp_power=comp_power,
-             SOC=current_SOC)
-    logging.info(f"保存断点状态: 时间步={i}, 温度={float(current_temp):.2f}℃, SOC={float(current_SOC):.2f}")
-
-def load_checkpoint(log_dir):
-    """加载断点状态"""
-    checkpoint_file = os.path.join(log_dir, "checkpoints", "last_state.npz")
-    if os.path.exists(checkpoint_file):
-        data = np.load(checkpoint_file)
-        logging.info(f"加载断点状态: 时间步={data['step']}, 温度={data['temperature']:.2f}℃, SOC={data['SOC']:.2f}")
-        return data['step'], data['temperature'], data['comp_power'], data['SOC']
-    return None
 
 def run_mpc_simulation(args, mpc, bm_for_simulation, cs_for_simulation, log_dir):
     """运行MPC仿真，solve失败时使用上一次状态重试"""
@@ -211,56 +189,32 @@ def run_mpc_simulation(args, mpc, bm_for_simulation, cs_for_simulation, log_dir)
         remaining_steps = args.total_steps - i
         if remaining_steps < mpc.N:
             break
+        
+        solution = mpc.multi_solve(i, float(current_temp), float(current_SOC), float(comp_power))
 
-        # 求解最优控制
-        try: 
-            solution = mpc.solve(i, current_temp, current_SOC, comp_power)
-        except Exception as e:
-            logging.warning(f"第{i}步优化求解失败，使用上一次成功状态重试")
-            current_temp = last_successful_state['temp']
-            current_SOC = last_successful_state['soc']
-            comp_power = last_successful_state['comp_power']
-            i = last_successful_state['step']
-            continue
         
         # 应用控制并更新状态
         for j in range(args.n_control):
             if i + j >= args.total_steps:
                 break
-                
-            comp_power = solution['control_sequence'][j][0]
-            
+            if solution is None:
+                logging.warning(f"使用上一次成功求解的计算结果")
+            else:
+                comp_power = solution['control_sequence'][j][0]
             current_temp, current_SOC, SOH_total_loss, I_pack = update_state(
                 i+j, args, cs_for_simulation, bm_for_simulation,
                 current_temp, comp_power, current_SOC
             )
-            
-            # 检查状态是否有效
-            if not np.isfinite(current_temp) or not np.isfinite(current_SOC):
-                logging.warning(f"第{i+j}步状态更新无效，使用上一次成功状态重试")
-                current_temp = last_successful_state['temp']
-                current_SOC = last_successful_state['soc']
-                comp_power = last_successful_state['comp_power']
-                i = last_successful_state['step']
-                break
             
             time_points.append(i+j+1)
             control_sequence.append([float(comp_power)])
             state_trajectory.append([float(current_temp), float(current_SOC), float(SOH_total_loss), float(I_pack)])
         
         i += args.n_control
-
-        if j == args.n_control - 1:
-            last_successful_state.update({
-                'temp': current_temp,
-                'soc': current_SOC,
-                'comp_power': comp_power,
-                'step': i
-            })
     
     return np.array(control_sequence), np.array(state_trajectory), np.array(time_points)
 
-def save_results(args, time_points, state_trajectory, log_dir):
+def save_results(args, time_points, state_trajectory, control_sequence, log_dir):
     """保存仿真结果"""
     base_results_dir = "results"
     if not os.path.exists(base_results_dir):
@@ -273,25 +227,17 @@ def save_results(args, time_points, state_trajectory, log_dir):
     mask = time_points <= args.save_interval
     time_data = time_points[mask]
     temp_data = state_trajectory[mask, 0]
-    soh_data = state_trajectory[mask, 3]
-    
-    # 保存温度数据
-    temp_file = os.path.join(results_dir, "temperature.csv")
+    soh_data = state_trajectory[mask, 2]
+    comp_power_data = control_sequence[mask]
+    power_data = TARGET[:len(time_data)]
+    # 保存数据
+    temp_file = os.path.join(results_dir, "data.csv")
     np.savetxt(temp_file, 
-              np.column_stack((time_data, temp_data)),
+              np.column_stack((time_data, comp_power_data, temp_data, soh_data, power_data)),
               delimiter=',',
-              header='Time(s),Temperature(℃)',
+              header='Time(s),Control_Sequence,Temperature(℃),SOH_Loss,Target_Power',
               comments='')
-    logging.info(f"温度数据已保存到: {temp_file}")
-    
-    # 保存SOH损耗数据
-    soh_file = os.path.join(results_dir, "soh_loss.csv")
-    np.savetxt(soh_file,
-              np.column_stack((time_data, soh_data)),
-              delimiter=',',
-              header='Time(s),SOH_Loss',
-              comments='')
-    logging.info(f"SOH损耗数据已保存到: {soh_file}")
+    logging.info(f"数据已保存到: {temp_file}")
 
 def main():
     """主函数"""
@@ -317,7 +263,7 @@ def main():
     logging.info(f"仿真完成，数据长度: {len(control_sequence)}")
     
     # 6. 保存结果
-    save_results(args, time_points, state_trajectory, log_dir)
+    save_results(args, time_points, state_trajectory, control_sequence, log_dir)
     
     # 7. 绘制结果图表
     plot_results(time_points, control_sequence, state_trajectory, log_dir)

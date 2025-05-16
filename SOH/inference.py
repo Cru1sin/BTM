@@ -7,7 +7,7 @@ from SOH.Model.Simple import Solution_u
 class SOH_predictor:
     def __init__(self, dt, charge_time, cycle_num):
         self.device = torch.device('mps' if torch.backends.mps.is_available() else 'cuda')
-        self.model_path = 'SOH/best-model/model.pth'
+        self.model_path = 'BTM/SOH/best-model/model.pth'
         # 初始化模型
         self.model = Solution_u().to(self.device)
         # 加载 state_dict（从 solution_u 字段中提取）
@@ -29,6 +29,7 @@ class SOH_predictor:
     
     def inference(self, I_cell, U_cell, T_bat):
         data = np.array([self.relative_time, self.charge_time, self.cycle_num, float(I_cell), float(U_cell), float(T_bat)])
+        print(f"data: {data}")
         normalized_data = self.normalize_data(data)
         tensor_data = torch.tensor(normalized_data, dtype=torch.float32).to(self.device)
         # 为了符合模型的输入要求，需要添加batch和sequence维度
@@ -42,18 +43,8 @@ class SOH_predictor:
         
         # 将结果转换为numpy数组
         predictions = predictions.cpu().numpy()
-        self.update_param(I_cell)
+        self.charge_time += self.relative_time
         return predictions
-    
-    def update_param(self, I_cell):
-        # 如果电流方向改变，则相对充电时间从0开始
-        if self.current_direction == None:
-            self.current_direction = I_cell
-        else:
-            if self.current_direction * I_cell < 0:
-                self.charge_time = 0
-            else:
-                self.charge_time = self.charge_time + self.relative_time
 
 if __name__ == "__main__":
     soh_predictor = SOH_predictor(dt=20, relative_time=0, charge_time=0, cycle_num=300)
