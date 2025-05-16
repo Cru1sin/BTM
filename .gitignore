@@ -19,7 +19,6 @@ dist/
 .idea/
 
 # 数据文件
-*.csv
 *.npz
 *.pkl
 
