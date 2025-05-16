@@ -27,7 +27,7 @@ def estimate_battery_capacity(noisy_power, P_target):
     return E_required
 
 if __name__ == "__main__":
-    SOH_Predictor = SOH_predictor(dt=1, relative_time=100, charge_time=1800, cycle_num=100)
+    SOH_Predictor = SOH_predictor(dt=20, charge_time=100, cycle_num=100)
     data = [0.2,3.7,25]
     predictions = SOH_Predictor.inference(*data)
     print(predictions)
