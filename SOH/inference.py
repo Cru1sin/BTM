@@ -7,7 +7,7 @@ from SOH.Model.Simple import Solution_u
 class SOH_predictor:
     def __init__(self, dt, charge_time, cycle_num):
         self.device = torch.device('mps' if torch.backends.mps.is_available() else 'cuda')
-        self.model_path = '/home/user/nss/BTM/BTM/SOH/best-model/model.pth'
+        self.model_path = 'SOH/best-model/model.pth'
         # 初始化模型
         self.model = Solution_u().to(self.device)
         # 加载 state_dict（从 solution_u 字段中提取）
