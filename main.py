@@ -19,7 +19,7 @@ def get_args():
     parser.add_argument('--dt', type=int, default=1, help='时间步长（秒）')
     parser.add_argument('--N', type=int, default=100, help='MPC预测时域')
     parser.add_argument('--n_control', type=int, default=10, help='每次应用的控制步数')
-    parser.add_argument('--total_steps', type=int, default=3600, help='总仿真步数（秒）')
+    parser.add_argument('--total_steps', type=int, default=3690, help='总仿真步数（秒）')
     parser.add_argument('--max_retries', type=int, default=5, help='最大重试次数')
     
     # 系统初始状态
@@ -192,15 +192,15 @@ def run_mpc_simulation(args, mpc, bm_for_simulation, cs_for_simulation, log_dir)
         
         solution = mpc.multi_solve(i, float(current_temp), float(current_SOC), float(comp_power))
 
-        if solution is None:
-            logging.warning(f"使用上一次成功求解的计算结果")
-        else:
-            comp_power = solution['control_sequence'][j][0]
+        
         # 应用控制并更新状态
         for j in range(args.n_control):
             if i + j >= args.total_steps:
                 break
-                
+            if solution is None:
+                logging.warning(f"使用上一次成功求解的计算结果")
+            else:
+                comp_power = solution['control_sequence'][j][0]
             current_temp, current_SOC, SOH_total_loss, I_pack = update_state(
                 i+j, args, cs_for_simulation, bm_for_simulation,
                 current_temp, comp_power, current_SOC
@@ -214,7 +214,7 @@ def run_mpc_simulation(args, mpc, bm_for_simulation, cs_for_simulation, log_dir)
     
     return np.array(control_sequence), np.array(state_trajectory), np.array(time_points)
 
-def save_results(args, time_points, state_trajectory, log_dir):
+def save_results(args, time_points, state_trajectory, control_sequence, log_dir):
     """保存仿真结果"""
     base_results_dir = "results"
     if not os.path.exists(base_results_dir):
@@ -227,25 +227,17 @@ def save_results(args, time_points, state_trajectory, log_dir):
     mask = time_points <= args.save_interval
     time_data = time_points[mask]
     temp_data = state_trajectory[mask, 0]
-    soh_data = state_trajectory[mask, 3]
-    
-    # 保存温度数据
-    temp_file = os.path.join(results_dir, "temperature.csv")
+    soh_data = state_trajectory[mask, 2]
+    comp_power_data = control_sequence[mask]
+    power_data = TARGET[:len(time_data)]
+    # 保存数据
+    temp_file = os.path.join(results_dir, "data.csv")
     np.savetxt(temp_file, 
-              np.column_stack((time_data, temp_data)),
+              np.column_stack((time_data, comp_power_data, temp_data, soh_data, power_data)),
               delimiter=',',
-              header='Time(s),Temperature(℃)',
+              header='Time(s),Control_Sequence,Temperature(℃),SOH_Loss,Target_Power',
               comments='')
-    logging.info(f"温度数据已保存到: {temp_file}")
-    
-    # 保存SOH损耗数据
-    soh_file = os.path.join(results_dir, "soh_loss.csv")
-    np.savetxt(soh_file,
-              np.column_stack((time_data, soh_data)),
-              delimiter=',',
-              header='Time(s),SOH_Loss',
-              comments='')
-    logging.info(f"SOH损耗数据已保存到: {soh_file}")
+    logging.info(f"数据已保存到: {temp_file}")
 
 def main():
     """主函数"""
@@ -271,7 +263,7 @@ def main():
     logging.info(f"仿真完成，数据长度: {len(control_sequence)}")
     
     # 6. 保存结果
-    save_results(args, time_points, state_trajectory, log_dir)
+    save_results(args, time_points, state_trajectory, control_sequence, log_dir)
     
     # 7. 绘制结果图表
     plot_results(time_points, control_sequence, state_trajectory, log_dir)

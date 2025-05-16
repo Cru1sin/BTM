@@ -32,7 +32,6 @@ dist/
 
 # 结果文件
 logs/
-results/
 SOH/results/
 SOH/results analysis/
 SOH/results of reviewer/
