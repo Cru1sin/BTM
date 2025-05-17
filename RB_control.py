@@ -7,7 +7,7 @@ from CoolingSystem.CS_for_ES import SimpleCoolingSystem as CoolingSystem
 from Controller.RB_controller import RBController
 
 def load_data():
-    data = np.genfromtxt('/home/user/nss/BTM/BTM/results/MPC_data.csv', delimiter=',')
+    data = np.genfromtxt('results/MPC_data.csv', delimiter=',')
     target_power = data[1:, 4]
     return target_power
 
@@ -21,6 +21,7 @@ def create_log_directory():
 def save_results(log_dir, data):
     """保存仿真结果到CSV文件"""
     # 保存数据
+    print(f"data: {data[:5]}")
     header = "Time(s),Comp_Power(W),Temperature(℃),SOH_Loss(%)"
     np.savetxt(f"{log_dir}/data.csv", data, delimiter=',', header=header, comments='')
 
@@ -61,14 +62,18 @@ def main():
         
         # 每30秒评估一次SOH损失
         if i % 30 == 0:
-            soh_loss = bm.get_SOH_loss(I_pack, current_temp)
+            soh_loss = float(bm.get_SOH_loss(I_pack, current_temp))
         else:
             soh_loss = 0
-        
+
+        # 添加温度噪声
+        temp_noise = np.random.normal(0, 0.01)
+        current_temp = current_temp + temp_noise  
         # 打印进度
         if i % 1 == 0:
             print(f"Step {i}/{n_steps}, 温度: {current_temp:.2f}℃, target_power: {target_power[i]:.2f}W, "
                   f"压缩机功率: {comp_power:.2f}W, SOC: {current_SOC:.3f}")
+        
         data.append([time_points[i], comp_power, current_temp, soh_loss])
     
     # 保存结果
