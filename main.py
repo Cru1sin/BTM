@@ -18,7 +18,7 @@ def get_args():
     # 仿真参数
     parser.add_argument('--dt', type=int, default=1, help='时间步长（秒）')
     parser.add_argument('--N', type=int, default=100, help='MPC预测时域')
-    parser.add_argument('--n_control', type=int, default=10, help='每次应用的控制步数')
+    parser.add_argument('--n_control', type=int, default=5, help='每次应用的控制步数')
     parser.add_argument('--total_steps', type=int, default=3690, help='总仿真步数（秒）')
     parser.add_argument('--max_retries', type=int, default=5, help='最大重试次数')
     
@@ -26,6 +26,7 @@ def get_args():
     parser.add_argument('--init_temp', type=float, default=25.0, help='电池初始温度（℃）')
     parser.add_argument('--init_soc', type=float, default=0.2, help='电池初始SOC')
     parser.add_argument('--T_amb', type=float, default=35.0, help='环境温度（℃）')
+    parser.add_argument('--init_comp_power', type=float, default=0, help='压缩机初始功率（W）')
     
     
     # 系统参数
@@ -167,7 +168,7 @@ def run_mpc_simulation(args, mpc, bm_for_simulation, cs_for_simulation, log_dir)
     # 初始化状态
     i = 0
     current_temp = args.init_temp
-    comp_power = 0
+    comp_power = args.init_comp_power
     current_SOC = args.init_soc
     logging.info("开始MPC控制仿真")
 

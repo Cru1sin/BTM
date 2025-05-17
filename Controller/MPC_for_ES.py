@@ -99,10 +99,10 @@ class MPCController:
                 self.opti.subject_to(self.opti.bounded(self.bm.I_min_limit+1, self.I_pack, self.bm.I_max_limit-1))
 
             # 权重系数
-            omega_temp = 10      # 温度偏差权重
-            omega_dcomp = 1e-5    # 压缩机功率变化率权重
-            omega_comp = 1e-6     # 压缩机功率权重
-            omega_I_pack = 1e-6  # 电池pack的电流权重
+            omega_temp = 1000     # 温度偏差权重
+            omega_dcomp = 1e-3    # 压缩机功率变化率权重
+            omega_comp = 1e-5    # 压缩机功率权重
+            omega_I_pack = 0  # 电池pack的电流权重
             # 温度优化目标
             temp_obj = omega_temp * (self.temp[i+1] - self.T_opt)**2
 

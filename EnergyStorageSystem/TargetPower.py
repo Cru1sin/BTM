@@ -53,6 +53,8 @@ noisy_power = P_RE_SECOND + smoothed_noise
 POWER = np.clip(noisy_power, 0, None)  # 防止出现负功率
 
 TARGET = 142300 - POWER
+
+TARGET_C = TARGET[17*3600:]
 # 绘图
 import matplotlib.pyplot as plt
 
