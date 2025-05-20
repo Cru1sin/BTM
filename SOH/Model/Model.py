@@ -2,7 +2,7 @@ import torch
 import torch.nn as nn
 import numpy as np
 from torch.autograd import grad
-from utils.util import AverageMeter,get_logger,eval_metrix
+from SOH.utils.util import AverageMeter,get_logger,eval_metrix
 import os
 import wandb
 device = 'cuda' if torch.cuda.is_available() else 'cpu'
@@ -65,7 +65,7 @@ class Predictor(nn.Module):
 class Solution_u(nn.Module):
     def __init__(self):
         super(Solution_u, self).__init__()
-        self.encoder = MLP(input_dim=20,output_dim=32,layers_num=3,hidden_dim=60,droupout=0.2)
+        self.encoder = MLP(input_dim=6,output_dim=32,layers_num=3,hidden_dim=60,droupout=0.2)
         self.predictor = Predictor(input_dim=32)
         self._init_()
 

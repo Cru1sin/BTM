@@ -7,7 +7,7 @@ from CoolingSystem.CS_for_ES import SimpleCoolingSystem as CoolingSystem
 from Controller.RB_controller import RBController
 
 def load_data():
-    data = np.genfromtxt('results/MPC_data.csv', delimiter=',')
+    data = np.genfromtxt('results/caseI/MPC_data.csv', delimiter=',')
     target_power = data[1:, 4]
     return target_power
 

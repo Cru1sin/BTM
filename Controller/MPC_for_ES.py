@@ -109,7 +109,7 @@ class MPCController:
             # 给超过comp_power限制的comp_power非常大的约束
             omega_comp_limit = 1e12
             bound_comp_obj1 = omega_comp_limit * ca.fmin(0, self.comp_power[i])**2
-            bound_comp_obj2 = omega_comp_limit * ca.fmax(4500, self.comp_power[i])**2
+            bound_comp_obj2 = omega_comp_limit * ca.fmax(0, self.comp_power[i]-4000)**2
 
 
             # 压缩机功率变化率目标
@@ -203,7 +203,7 @@ class MPCController:
             if comp_power < 500:
                 comp_power_towards = 750
             else:
-                comp_power_towards = 2000
+                comp_power_towards = 4000
         else:
             if comp_power < 500:
                 comp_power_towards = 750

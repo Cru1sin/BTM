@@ -3,7 +3,7 @@ import numpy as np
 from utils.parameter import m_clnt_vector, T_air_vector, lamda1_table, lamda2_table, lamda3_table, lamda4_table, lamda5_table, lamda6_table
 from utils.math_utils import exp, if_else, max, min
 from CoolingSystem.BaseCoolingSystem import CoolingSystem
-
+import casadi as ca
 class SimpleCoolingSystem(CoolingSystem):
     """
     一个简单的液体冷却系统，假设传热方式为对流换热
@@ -71,6 +71,7 @@ class SimpleCoolingSystem(CoolingSystem):
                  lambda4 * T_amb * m_air + lambda5 * T_clnt_out * m_clnt + lambda6
         """
         massflow_air = 0.10065  # 空气质量流量 (kg/s)
+        # P_comp为总功率
         # 计算 Q_cooling
         Q_cooling = if_else(P_comp < 500, 0, self.lambda1 * P_comp +
             self.lambda2 * P_comp**2 +

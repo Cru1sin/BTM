@@ -7,7 +7,7 @@ from datetime import datetime
 from Battery.BatteryPack import BatteryPack as Battery
 from CoolingSystem.CS_for_ES import SimpleCoolingSystem
 from Controller.MPC_for_ES import MPCController
-from EnergyStorageSystem.TargetPower import TARGET
+from EnergyStorageSystem.Ningbo import POWER as TARGET
 from utils import plot_results
 from SOH.inference import SOH_predictor
 
@@ -30,7 +30,7 @@ def get_args():
     
     
     # 系统参数
-    parser.add_argument('--target_power', type=float, default=142.3e3, help='目标功率（W）')
+    parser.add_argument('--target_power', type=float, default=2300000/250, help='目标功率（W）')
     parser.add_argument('--BTM_power_base', type=float, default=200.0, help='BTMS基础功率（W）')
     
     # 温度扰动参数

@@ -1,23 +1,48 @@
 import numpy as np
 import matplotlib.pyplot as plt
 
-def load_data():
-    MPCdata = np.loadtxt("results/MPC_data.csv", delimiter=',', skiprows=1)
+def load_dataI():
+    MPCdata = np.loadtxt("results/caseI/MPC_data.csv", delimiter=',', skiprows=1)
     time = MPCdata[:, 0]
     comp_power_MPC = MPCdata[:, 1]
     temp_MPC = MPCdata[:, 2]
     SOH_loss_MPC = MPCdata[:, 3]
 
-    RBdata = np.loadtxt("results/RB_data.csv", delimiter=',', skiprows=1)
+    RBdata = np.loadtxt("results/caseI/RB_data.csv", delimiter=',', skiprows=1)
     comp_power_RB = RBdata[:, 1]
     temp_RB = RBdata[:, 2]
     SOH_loss_RB = RBdata[:, 3]
     return time, comp_power_MPC, temp_MPC, SOH_loss_MPC, comp_power_RB, temp_RB, SOH_loss_RB
 
+def load_dataII():
+    MPCdata = np.loadtxt("results/caseII/MPC_data.csv", delimiter=',', skiprows=1)
+    time = MPCdata[:, 0]
+    comp_power_MPC = MPCdata[:, 1]
+    temp_MPC = MPCdata[:, 2]
+    SOH_loss_MPC = MPCdata[:, 3]
+
+    RBdata = np.loadtxt("results/caseII/RB_data.csv", delimiter=',', skiprows=1)
+    comp_power_RB = RBdata[:, 1]
+    temp_RB = RBdata[:, 2]
+    SOH_loss_RB = RBdata[:, 3]
+    return time, comp_power_MPC, temp_MPC, SOH_loss_MPC, comp_power_RB, temp_RB, SOH_loss_RB
+
+
+
 import matplotlib.pyplot as plt
 import matplotlib.ticker as ticker
 import numpy as np
-
+def statics_temp(time, temp_MPC, temp_RB):
+    max_temp_MPC = max(temp_MPC)
+    min_temp_MPC = min(temp_MPC)
+    avg_temp_MPC = np.mean(temp_MPC)
+    delta_temp_MPC = max_temp_MPC - min_temp_MPC
+    max_temp_RB = max(temp_RB)
+    min_temp_RB = min(temp_RB)
+    avg_temp_RB = np.mean(temp_RB)
+    delta_temp_RB = max_temp_RB - min_temp_RB
+    print(f"max_temp_MPC: {max_temp_MPC}, min_temp_MPC: {min_temp_MPC}, avg_temp_MPC: {avg_temp_MPC}, delta_temp_MPC: {delta_temp_MPC}")
+    print(f"max_temp_RB: {max_temp_RB}, min_temp_RB: {min_temp_RB}, avg_temp_RB: {avg_temp_RB}, delta_temp_RB: {delta_temp_RB}")
 def plot_temp(time, temp_MPC, temp_RB):
     plt.figure(figsize=(6, 4), dpi=300)  # 高分辨率，适合论文
     plt.rcParams['font.family'] = 'Times New Roman'
@@ -52,50 +77,47 @@ def plot_temp(time, temp_MPC, temp_RB):
     # 格式控制器，让 x 轴以千为单位显示（更专业）
     plt.gca().xaxis.set_major_locator(ticker.MultipleLocator(600))  # 每10分钟一个刻度
     plt.tight_layout()
-    plt.savefig("plot/temp.png", dpi=300)
+    plt.savefig("plot/caseII/temp.png", dpi=300)
     plt.show()
+
+def plot_comp_power(time, comp_power_MPC, comp_power_RB):
+    plt.figure(figsize=(6, 4), dpi=300)
     
-def plot_comparison(time, temp_MPC, temp_RB):
-    import matplotlib.pyplot as plt
+    # 设置字体
+    plt.rcParams['font.family'] = 'Times New Roman'
+    plt.rcParams['axes.linewidth'] = 1.2  # 坐标轴线宽
+    
+    # 绘制曲线
+    plt.plot(time, comp_power_MPC, label='MPC', linestyle='-', color='#0072B2', linewidth=2.2)
+    plt.plot(time, comp_power_RB, label='RB', linestyle='--', color='#D55E00', linewidth=2.2)
 
-    # 计算统计值
-    metrics_MPC = [np.max(temp_MPC), np.min(temp_MPC), np.mean(temp_MPC)]
-    metrics_RB = [np.max(temp_RB), np.min(temp_RB), np.mean(temp_RB)]
+    # 坐标轴标签
+    plt.xlabel('Time (s)', fontsize=12)
+    plt.ylabel('Compressor Power (W)', fontsize=12)
+    
+    # 坐标轴范围和刻度
+    plt.ylim(0, 3100)
+    plt.xlim(time[0], time[-1])
+    plt.xticks(fontsize=10)
+    plt.yticks(fontsize=10)
 
-    labels = ['T_max (°C)', 'T_min (°C)', 'T_avg (°C)']
-    x = np.arange(len(labels))  # [0, 1, 2]
-    width = 0.35
+    # 网格线
+    plt.grid(which='major', linestyle=':', linewidth=0.6, alpha=0.8)
 
-    # 创建图形
-    fig, ax = plt.subplots(figsize=(6, 4), dpi=300)
+    # 去掉顶部和右侧边框
+    ax = plt.gca()
+    ax.spines['top'].set_visible(False)
+    ax.spines['right'].set_visible(False)
 
-    # 柱状图
-    bar1 = ax.bar(x - width/2, metrics_MPC, width, label='MPC', color='#0072B2')
-    bar2 = ax.bar(x + width/2, metrics_RB, width, label='RB', color='#D55E00')
+    # 图例
+    plt.legend(loc='upper right', fontsize=10, frameon=False)
 
-    # 添加数值标签
-    def add_labels(bars):
-        for bar in bars:
-            height = bar.get_height()
-            ax.annotate(f'{height:.1f}',
-                        xy=(bar.get_x() + bar.get_width() / 2, height),
-                        xytext=(0, 3),  # 向上偏移3
-                        textcoords="offset points",
-                        ha='center', va='bottom', fontsize=9)
-
-    add_labels(bar1)
-    add_labels(bar2)
-
-    # 设置标签和样式
-    ax.set_ylabel('Temperature (℃)', fontsize=12)
-    ax.set_xticks(x)
-    ax.set_xticklabels(labels, fontsize=11)
-    ax.legend(fontsize=10)
-    ax.grid(axis='y', linestyle='--', linewidth=0.5, alpha=0.7)
+    # 紧凑布局
     plt.tight_layout()
 
-    # 保存图像
-    plt.savefig('temperature_metrics_comparison.pdf', dpi=300, bbox_inches='tight')
+    # 保存图片
+    plt.savefig("plot/caseII/comp_power.png", dpi=600, bbox_inches='tight')
+
     plt.show()
 
 def delta_comp_power(comp_power_MPC):
@@ -108,96 +130,79 @@ def delta_comp_power(comp_power_MPC):
 def calculate_comp_power(comp_power_MPC, comp_power_RB):
     sum_of_comp_power_MPC = sum(comp_power_MPC)
     sum_of_comp_power_RB = sum(comp_power_RB)
-    print(f"sum_of_comp_power_MPC: {sum_of_comp_power_MPC}")
-    print(f"sum_of_comp_power_RB: {sum_of_comp_power_RB}")
+    print(f"sum_of_comp_power_MPC: {sum_of_comp_power_MPC/3600} Wh")
+    print(f"sum_of_comp_power_RB: {sum_of_comp_power_RB/3600} Wh")
     percent_of_comp_power_MPC = abs(sum_of_comp_power_MPC - sum_of_comp_power_RB) / sum_of_comp_power_RB
     print(f"percent_of_comp_power_MPC: {percent_of_comp_power_MPC}")
     return sum_of_comp_power_MPC, sum_of_comp_power_RB
 
-def calculate_SOH_loss(SOH_loss_MPC, SOH_loss_RB):
+def calculate_sum_SOH_loss(SOH_loss_MPC, SOH_loss_RB):
     sum_of_SOH_loss_MPC = sum(SOH_loss_MPC)
     sum_of_SOH_loss_RB = sum(SOH_loss_RB)
-    print(f"sum_of_SOH_loss_MPC: {sum_of_SOH_loss_MPC}")
-    print(f"sum_of_SOH_loss_RB: {sum_of_SOH_loss_RB}")
+    print(f"sum_of_SOH_loss_MPC: {-sum_of_SOH_loss_MPC*1000} * 10^-3")
+    print(f"sum_of_SOH_loss_RB: {-sum_of_SOH_loss_RB*1000} * 10^-3")
     percent_of_SOH_loss_MPC = abs(sum_of_SOH_loss_MPC - sum_of_SOH_loss_RB) / sum_of_SOH_loss_RB
     print(f"percent_of_SOH_loss_MPC: {percent_of_SOH_loss_MPC}")
     return -sum_of_SOH_loss_MPC, -sum_of_SOH_loss_RB
 
-def plot_comp_power_SOH_loss(time, comp_power_MPC, comp_power_RB, SOH_loss_MPC, SOH_loss_RB):
-    sum_of_comp_power_MPC, sum_of_comp_power_RB = calculate_comp_power(comp_power_MPC, comp_power_RB)
-    sum_of_SOH_loss_MPC, sum_of_SOH_loss_RB = calculate_SOH_loss(SOH_loss_MPC, SOH_loss_RB)
-    
-    total_power = [sum_of_comp_power_MPC, sum_of_comp_power_RB]
-    total_soh = [sum_of_SOH_loss_MPC, sum_of_SOH_loss_RB]
+def calculate_efftive_SOH_loss(SOH_loss_MPC, SOH_loss_RB):
+    # 提取其中非零的数
+    effective_SOH_loss_MPC = [-SOH_loss_MPC[i] for i in range(len(SOH_loss_MPC)) if SOH_loss_MPC[i] != 0]
+    effective_SOH_loss_RB = [-SOH_loss_RB[i] for i in range(len(SOH_loss_RB)) if SOH_loss_RB[i] != 0]
+    # 计算每一步的累加
+    effective_SOH_loss_MPC = [sum(effective_SOH_loss_MPC[:i]) for i in range(len(effective_SOH_loss_MPC))]
+    effective_SOH_loss_RB = [sum(effective_SOH_loss_RB[:i]) for i in range(len(effective_SOH_loss_RB))]
+    return effective_SOH_loss_MPC, effective_SOH_loss_RB
 
-    # 指标组
-    groups = ['Compressor Power (W·s)', 'SOH Loss (%)']
-    x = np.arange(len(groups))  # [0, 1]
 
-    # 每组中的两种方法
-    mpc_values = [total_power[0], total_soh[0]]
-    rb_values = [total_power[1], total_soh[1]]
+def plot_SOH_loss(time, SOH_loss_MPC_I, SOH_loss_RB_I, SOH_loss_MPC_II, SOH_loss_RB_II):
+    # 提取有效值
+    effective_SOH_loss_MPC_I, effective_SOH_loss_RB_I = calculate_efftive_SOH_loss(SOH_loss_MPC_I, SOH_loss_RB_I)
+    effective_SOH_loss_MPC_II, effective_SOH_loss_RB_II = calculate_efftive_SOH_loss(SOH_loss_MPC_II, SOH_loss_RB_II)
+    time_arange = [time[i] / 60 for i in range(0, len(time), 30)]  # 转为分钟
 
-    labels = ['MPC', 'RB']
-    x = np.arange(len(labels))  # [0, 1]
-    width = 0.35
+    # 美化配色与线型
+    plt.figure(figsize=(6, 4), dpi=300)
 
-    fig, ax1 = plt.subplots(figsize=(9, 6))
+    # Case I
+    plt.plot(time_arange, effective_SOH_loss_MPC_I, label='Case I - MPC',
+             linestyle='-', color='#0072B2', linewidth=0.8, marker='o', markersize=0.1)
+    plt.plot(time_arange, effective_SOH_loss_RB_I, label='Case I - Rule-Based',
+             linestyle='--', color='#56B4E9', linewidth=0.8, marker='s', markersize=0.1)
 
-    # 左侧压缩机功率柱状图（主轴）
-    color_power = '#1f77b4'
-    bar1 = ax1.bar(x - width/2, total_power, width,
-                   label='Compressor Power (W·s)', color=color_power,
-                   edgecolor='black', linewidth=1.2)
-    ax1.set_ylabel('Compressor Power (W·s)', fontsize=13, color=color_power)
-    ax1.tick_params(axis='y', labelcolor=color_power)
+    # Case II
+    plt.plot(time_arange, effective_SOH_loss_MPC_II, label='Case II - MPC',
+             linestyle='-', color='#D55E00', linewidth=0.8, marker='^', markersize=0.1)
+    plt.plot(time_arange, effective_SOH_loss_RB_II, label='Case II - Rule-Based',
+             linestyle='--', color='#E69F00', linewidth=0.8, marker='v', markersize=0.1)
 
-    # 添加数值标签
-    for rect in bar1:
-        height = rect.get_height()
-        ax1.text(rect.get_x() + rect.get_width()/2, height * 1.01,
-                 f'{height:.1f}', ha='center', va='bottom', fontsize=11, color=color_power)
+    # 标签与网格
+    plt.xlabel('Time (min)', fontsize=10)
+    plt.ylabel('SOH Loss', fontsize=10)
+    plt.title('Comparison of SOH Loss Under Different Control Strategies', fontsize=11)
+    plt.grid(True, linestyle='--', alpha=0.6)
+    plt.xticks(fontsize=9)
+    plt.yticks(fontsize=9)
 
-    # 创建右侧Y轴（SOH loss）
-    ax2 = ax1.twinx()
-    color_soh = '#ff7f0e'
-    bar2 = ax2.bar(x + width/2, total_soh, width,
-                   label='SOH Loss (%)', color=color_soh,
-                   edgecolor='black', linewidth=1.2)
-    ax2.set_ylabel('SOH Loss (%)', fontsize=13, color=color_soh)
-    ax2.tick_params(axis='y', labelcolor=color_soh)
+    # 图例
+    plt.legend(fontsize=9, loc='upper left', frameon=False, ncol=2)
 
-    # 添加数值标签
-    for rect in bar2:
-        height = rect.get_height()
-        ax2.text(rect.get_x() + rect.get_width()/2, height * 1.01,
-                 f'{height:.4f}', ha='center', va='bottom', fontsize=11, color=color_soh)
-
-    # 设置x轴
-    ax1.set_xticks(x)
-    ax1.set_xticklabels(labels, fontsize=12)
-    ax1.set_title('Comparison of MPC and RB: Compressor Power vs SOH Loss',
-                  fontsize=14, weight='bold')
-
-    # 网格与布局美化
-    ax1.grid(axis='y', linestyle='--', alpha=0.5)
-    fig.tight_layout()
-
-    # 图例合并
-    # 图例合并
-    handles1, labels1 = ax1.get_legend_handles_labels()
-    handles2, labels2 = ax2.get_legend_handles_labels()
-    fig.legend(handles1 + handles2, labels1 + labels2, loc='upper right', fontsize=11)
-
+    # 布局与保存
+    plt.tight_layout()
+    plt.savefig("plot/SOH_loss_comparison.png", dpi=300)
     plt.show()
 
 def plot_data():
-    time, comp_power_MPC, temp_MPC, SOH_loss_MPC, comp_power_RB, temp_RB, SOH_loss_RB = load_data()
+    time_I, comp_power_MPC_I, temp_MPC_I, SOH_loss_MPC_I, comp_power_RB_I, temp_RB_I, SOH_loss_RB_I = load_dataI()
+    time_II, comp_power_MPC_II, temp_MPC_II, SOH_loss_MPC_II, comp_power_RB_II, temp_RB_II, SOH_loss_RB_II = load_dataII()
+    #statics_temp(time, temp_MPC, temp_RB)
     #plot_temp(time, temp_MPC, temp_RB)
+    #plot_comp_power(time, comp_power_MPC, comp_power_RB)
     #plot_comparison(time, temp_MPC, temp_RB)
     #delta_comp_power_MPC = delta_comp_power(comp_power_MPC)
     #calculate_comp_power(comp_power_MPC, comp_power_RB)
     #calculate_SOH_loss(SOH_loss_MPC, SOH_loss_RB)
-    plot_comp_power_SOH_loss(time, comp_power_MPC, comp_power_RB, SOH_loss_MPC, SOH_loss_RB)
+    #plot_comp_power_SOH_loss(time, comp_power_MPC, comp_power_RB, SOH_loss_MPC, SOH_loss_RB)
+    plot_SOH_loss(time_I, SOH_loss_MPC_I, SOH_loss_RB_I, SOH_loss_MPC_II, SOH_loss_RB_II)
 if __name__ == "__main__":
     plot_data()
