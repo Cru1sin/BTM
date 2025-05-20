@@ -73,6 +73,7 @@ class SimpleCoolingSystem(CoolingSystem):
         massflow_air = 0.10065  # 空气质量流量 (kg/s)
         # P_comp为总功率
         # 计算 Q_cooling
+        
         Q_cooling = if_else(P_comp < 500, 0, self.lambda1 * P_comp +
             self.lambda2 * P_comp**2 +
             self.lambda3 * self.T_clnt_out +
@@ -80,6 +81,7 @@ class SimpleCoolingSystem(CoolingSystem):
             self.lambda5 * self.T_clnt_out * self.massflow_clnt +
             self.lambda6
         )
+        Q_cooling = if_else(P_comp > 4500, 0, Q_cooling)
         
 
         """Q_cooling = (self.lambda1 * P_comp + self.lambda2 * P_comp**2 + self.lambda3 * self.T_clnt_out + self.lambda4 * self.T_amb * massflow_air + self.lambda5 * self.T_clnt_out * self.massflow_clnt + self.lambda6 )*self.dt*0.2

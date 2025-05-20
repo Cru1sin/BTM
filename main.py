@@ -24,13 +24,13 @@ def get_args():
     
     # 系统初始状态
     parser.add_argument('--init_temp', type=float, default=25.0, help='电池初始温度（℃）')
-    parser.add_argument('--init_soc', type=float, default=0.2, help='电池初始SOC')
+    parser.add_argument('--init_soc', type=float, default=0.6, help='电池初始SOC')
     parser.add_argument('--T_amb', type=float, default=35.0, help='环境温度（℃）')
     parser.add_argument('--init_comp_power', type=float, default=0, help='压缩机初始功率（W）')
     
     
     # 系统参数
-    parser.add_argument('--target_power', type=float, default=2300000/250, help='目标功率（W）')
+    parser.add_argument('--target_power', type=float, default=2300000/100, help='目标功率（W）')
     parser.add_argument('--BTM_power_base', type=float, default=200.0, help='BTMS基础功率（W）')
     
     # 温度扰动参数
@@ -40,20 +40,22 @@ def get_args():
     parser.add_argument('--log_interval', type=int, default=1, help='日志记录间隔（秒）')
     parser.add_argument('--save_interval', type=int, default=3600, help='结果保存时间（秒）')
     parser.add_argument('--SOH_interval', type=int, default=30, help='SOH损耗记录间隔（秒）')
+    parser.add_argument('--filename', type=str, default='100', help='文件名')
     
     return parser.parse_args()
 
-def setup_logging():
+def setup_logging(args):
     """设置日志系统"""
     # 创建主日志文件夹
     base_log_dir = "logs"
     if not os.path.exists(base_log_dir):
         os.makedirs(base_log_dir)
-    
-    # 创建带时间戳的唯一子文件夹
-    run_dir = os.path.join(base_log_dir, datetime.now().strftime('%Y%m%d_%H%M%S'))
+    if args.filename is None:
+        # 创建带时间戳的唯一子文件夹
+        run_dir = os.path.join(base_log_dir, datetime.now().strftime('%Y%m%d_%H%M%S'))
+    else:
+        run_dir = os.path.join(base_log_dir, args.filename)
     os.makedirs(run_dir, exist_ok=True)
-    
     # 设置日志记录
     log_file = os.path.join(run_dir, "mpc_control.log")
     logging.basicConfig(
@@ -216,12 +218,8 @@ def run_mpc_simulation(args, mpc, bm_for_simulation, cs_for_simulation, log_dir)
     return np.array(control_sequence), np.array(state_trajectory), np.array(time_points)
 
 def save_results(args, time_points, state_trajectory, control_sequence, log_dir):
-    """保存仿真结果"""
-    base_results_dir = "results"
-    if not os.path.exists(base_results_dir):
-        os.makedirs(base_results_dir)
-    
-    results_dir = os.path.join(base_results_dir, os.path.basename(log_dir))
+    """保存仿真结果，到logs文件夹下"""
+    results_dir = log_dir
     os.makedirs(results_dir, exist_ok=True)
     
     # 提取指定时间间隔的数据
@@ -246,7 +244,7 @@ def main():
     args = get_args()
     
     # 2. 设置日志系统
-    log_dir = setup_logging()
+    log_dir = setup_logging(args)
     logging.info("开始MPC控制仿真")
     
     # 3. 初始化系统

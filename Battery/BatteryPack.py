@@ -5,7 +5,7 @@ class BatteryPack(BatteryCell):
     def __init__(self, dt, T_amb=25):
         super().__init__(dt)
         self.N_series = 278
-        self.N_parallel = 4
+        self.N_parallel = 10
         self.N_cell = self.N_series * self.N_parallel
         self.T_amb = T_amb
         self.h_bat = 10

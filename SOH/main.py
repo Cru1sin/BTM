@@ -1,5 +1,5 @@
 from dataloader.XJTU_loader import XJTUDdataset
-from Model.Simple import PINN
+from Model.Model import PINN
 import argparse
 import os
 import time

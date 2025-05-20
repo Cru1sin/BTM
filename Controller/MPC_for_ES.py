@@ -203,7 +203,7 @@ class MPCController:
             if comp_power < 500:
                 comp_power_towards = 750
             else:
-                comp_power_towards = 4000
+                comp_power_towards = 3500
         else:
             if comp_power < 500:
                 comp_power_towards = 750

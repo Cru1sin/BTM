@@ -3,8 +3,8 @@ from matplotlib import pyplot as plt
 import numpy as np
 from scipy.interpolate import interp1d
 
-wind_root = '/Users/cruisin/Documents/BTM/EnergyStorageSystem/风、光、储、氢、岸电数据/wind.xlsx'
-solar_root = '/Users/cruisin/Documents/BTM/EnergyStorageSystem/风、光、储、氢、岸电数据/solar.xls'
+wind_root = '/home/user/nss/BTM/BTM/EnergyStorageSystem/风、光、储、氢、岸电数据/wind.xlsx'
+solar_root = '/home/user/nss/BTM/BTM/EnergyStorageSystem/风、光、储、氢、岸电数据/solar.xls'
 
 wind_data = pd.read_excel(wind_root)
 solar_data = pd.read_excel(solar_root)
@@ -47,7 +47,7 @@ print(power_per_second)
 noisy_power = power_per_second + smoothed_noise
 POWER = np.clip(noisy_power, 0, None)  # 防止出现负功率
 # MW -> W
-POWER = POWER * 1000000 /250
+POWER = (2.5 - POWER) * 1e6 / 100
 print(POWER)
 """# 可视化
 plt.figure(figsize=(10, 5), dpi=150)
