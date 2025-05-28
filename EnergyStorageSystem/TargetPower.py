@@ -12,9 +12,10 @@ import numpy as np
 wind_shape = np.array([4200, 4500, 4700, 4800, 4700, 4600, 4500, 4400, 4500, 4400,
                        4300, 4600, 4700, 4100, 3600, 3000, 2400, 2300, 2000, 1800,
                        2200, 2700, 3100, 3500])
+WIND = wind_shape
 solar_shape = np.array([0, 0, 0, 0, 0, 0, 0, 0, -200, 1000, 3000, 5000,
                         6500, 7200, 7000, 6000, 5000, 3000, 1000, 0, 0, 0, 0, 0])
-
+SOLAR = solar_shape
 # 归一化
 wind_shape = wind_shape / np.max(wind_shape)
 solar_shape = solar_shape / np.max(solar_shape)

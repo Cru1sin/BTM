@@ -7,14 +7,13 @@ from CoolingSystem.CS_for_ES import SimpleCoolingSystem as CoolingSystem
 from Controller.RB_controller import RBController
 
 def load_data():
-    data = np.genfromtxt('results/caseI/MPC_data.csv', delimiter=',')
+    data = np.genfromtxt('results/harbor/100.csv', delimiter=',')
     target_power = data[1:, 4]
     return target_power
 
 def create_log_directory():
     """创建日志目录"""
-    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-    log_dir = f"results/{timestamp}"
+    log_dir = f"results/harbor-RB"
     os.makedirs(log_dir, exist_ok=True)
     return log_dir
 
@@ -23,7 +22,7 @@ def save_results(log_dir, data):
     # 保存数据
     print(f"data: {data[:5]}")
     header = "Time(s),Comp_Power(W),Temperature(℃),SOH_Loss(%)"
-    np.savetxt(f"{log_dir}/data.csv", data, delimiter=',', header=header, comments='')
+    np.savetxt(f"{log_dir}/100.csv", data, delimiter=',', header=header, comments='')
 
 def main():
     # 创建日志目录

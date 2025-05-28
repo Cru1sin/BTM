@@ -1,5 +1,22 @@
 import numpy as np
 import matplotlib.pyplot as plt
+from matplotlib.lines import Line2D
+import matplotlib as mpl
+# 配置字体、全局风格
+mpl.rcParams['font.family'] = 'Times New Roman'
+mpl.rcParams['font.size'] = 8
+mpl.rcParams['axes.labelsize'] = 8
+mpl.rcParams['axes.titlesize'] = 9
+mpl.rcParams['legend.fontsize'] = 6
+mpl.rcParams['xtick.labelsize'] = 7
+mpl.rcParams['ytick.labelsize'] = 7
+
+# 配色和样式设置
+colors = ['#ff7f00', '#377eb8', '#4daf4a', '#e41a1c']
+# 颜色分别为：橙色、蓝色、绿色、红色
+markers = ['o', 'v', 'D', 'p', 's', '^']
+line_width = 1.0
+marker_size = 4.0
 
 def load_dataI():
     MPCdata = np.loadtxt("results/caseI/MPC_data.csv", delimiter=',', skiprows=1)
@@ -43,81 +60,138 @@ def statics_temp(time, temp_MPC, temp_RB):
     delta_temp_RB = max_temp_RB - min_temp_RB
     print(f"max_temp_MPC: {max_temp_MPC}, min_temp_MPC: {min_temp_MPC}, avg_temp_MPC: {avg_temp_MPC}, delta_temp_MPC: {delta_temp_MPC}")
     print(f"max_temp_RB: {max_temp_RB}, min_temp_RB: {min_temp_RB}, avg_temp_RB: {avg_temp_RB}, delta_temp_RB: {delta_temp_RB}")
-def plot_temp(time, temp_MPC, temp_RB):
-    plt.figure(figsize=(6, 4), dpi=300)  # 高分辨率，适合论文
-    plt.rcParams['font.family'] = 'Times New Roman'
 
-    # 曲线绘制
-    plt.plot(time, temp_RB, label='Rule-based (RB)', linestyle='--', color='#D55E00', linewidth=2.0)
-    plt.plot(time, temp_MPC, label='Model Predictive Control (MPC)', linestyle='-', color='#0072B2', linewidth=2.0)
+def plot_temp(time, temp_MPC, temp_RB, save_path='plot/caseII/temp.png'):
+    fig = plt.figure(figsize=(4, 2), dpi=200)
+    custom_lines = []
+    # 统一风格设置（如已有可省略）
+    colors = ['#D55E00', '#0072B2']
+    markers = ['o', 'v', 'D', 'p', 's', '^']
+    line_width = 1
+    marker_size = 1.5
+    legend_fontsize = 6
+    # 绘制 Rule-based 控制温度曲线
+    plt.plot(
+        time,
+        temp_RB,
+        linestyle='--',
+        color=colors[0],
+        linewidth=line_width,
+        marker=markers[0],
+        markersize=marker_size,
+        markevery=max(len(time)//20, 1),
+        label='Rule-based (RB)'
+    )
+    custom_lines.append(Line2D([0], [0], color=colors[0], linestyle='--',
+                               linewidth=line_width, marker=markers[0], markersize=marker_size))
 
-    # 坐标轴标签
-    plt.xlabel('Time (s)', fontsize=12)
-    plt.ylabel('Battery Temperature (°C)', fontsize=12)
+    # 绘制 MPC 控制温度曲线
+    plt.plot(
+        time,
+        temp_MPC,
+        linestyle='-',
+        color=colors[1],
+        linewidth=line_width,
+        marker=markers[1],
+        markersize=marker_size,
+        markevery=max(len(time)//20, 1),
+        label='Model Predictive Control (MPC)'
+    )
+    custom_lines.append(Line2D([0], [0], color=colors[1], linestyle='-',
+                               linewidth=line_width, marker=markers[1], markersize=marker_size))
 
-    # 坐标刻度
-    plt.xticks(fontsize=10)
-    plt.yticks(fontsize=10)
-
-    # 网格线
-    plt.grid(True, linestyle='--', linewidth=0.5, alpha=0.7)
-
-    # 边框设置
-    for spine in ['top', 'right']:
-        plt.gca().spines[spine].set_visible(False)
+    # 坐标轴与标题
+    plt.xlabel('Time (s)')
+    plt.ylabel('Battery Temperature (°C)')
+    #plt.title('Battery Temperature Comparison', fontsize=8)
 
     # 图例设置
-    plt.legend(fontsize=10, loc='upper right', frameon=False)
+    plt.legend(custom_lines, ['Rule-based (RB)', 'MPC'], loc='upper right', frameon=False, fontsize=legend_fontsize)
 
-    # Y轴范围自动适应加小余量，防止曲线压边
+    # 网格 & 轴格式
+    plt.grid(True, linestyle='--', linewidth=0.3, alpha=0.6)
+    plt.xticks(fontsize=7)
+    plt.yticks(fontsize=7)
+    plt.gca().xaxis.set_major_locator(ticker.MultipleLocator(600))  # 每 10 分钟一格（假设 time 单位是秒）
+
+    # Y轴自动范围（留余量）
     y_min = min(min(temp_MPC), min(temp_RB)) - 0.3
-    y_max = max(max(temp_MPC), max(temp_RB)) + 1
+    y_max = max(max(temp_MPC), max(temp_RB)) + 0.7
     plt.ylim(y_min, y_max)
 
-    # 格式控制器，让 x 轴以千为单位显示（更专业）
-    plt.gca().xaxis.set_major_locator(ticker.MultipleLocator(600))  # 每10分钟一个刻度
+    ax = plt.gca()  # 获取当前坐标轴
+    # 启用小刻度
+    ax.minorticks_on()
+
+    # 布局与保存
     plt.tight_layout()
-    plt.savefig("plot/caseII/temp.png", dpi=300)
+    plt.savefig(save_path, dpi=600)
     plt.show()
 
-def plot_comp_power(time, comp_power_MPC, comp_power_RB):
-    plt.figure(figsize=(6, 4), dpi=300)
-    
-    # 设置字体
-    plt.rcParams['font.family'] = 'Times New Roman'
-    plt.rcParams['axes.linewidth'] = 1.2  # 坐标轴线宽
-    
-    # 绘制曲线
-    plt.plot(time, comp_power_MPC, label='MPC', linestyle='-', color='#0072B2', linewidth=2.2)
-    plt.plot(time, comp_power_RB, label='RB', linestyle='--', color='#D55E00', linewidth=2.2)
+def plot_comp_power(time, comp_power_MPC, comp_power_RB, save_path='plot/caseI/comp_power.png'):
+    # 样式设置
+    colors = ['#0072B2', '#D55E00']
+    markers = ['o', 'v']
+    line_width = 1
+    marker_size = 0
+    legend_fontsize = 6
 
-    # 坐标轴标签
-    plt.xlabel('Time (s)', fontsize=12)
-    plt.ylabel('Compressor Power (W)', fontsize=12)
+    # 设置字体与坐标轴风格
+    plt.rcParams['font.family'] = 'Times New Roman'
+    plt.rcParams['axes.linewidth'] = 1.0
+
+    fig = plt.figure(figsize=(4, 2), dpi=200)
+    custom_lines = []
+
+    # 绘制 MPC 曲线
+    plt.plot(
+        time,
+        comp_power_MPC,
+        label='Model Predictive Control (MPC)',
+        linestyle='-',
+        color=colors[0],
+        linewidth=line_width,
+        marker=markers[0],
+        markersize=marker_size,
+        markevery=max(len(time)//20, 1)
+    )
+    custom_lines.append(Line2D([0], [0], color=colors[0], linestyle='-',
+                               linewidth=line_width, marker=markers[0], markersize=marker_size))
+
+    # 绘制 RB 曲线
+    plt.plot(
+        time,
+        comp_power_RB,
+        label='Rule-based (RB)',
+        linestyle='--',
+        color=colors[1],
+        linewidth=line_width,
+        marker=markers[1],
+        markersize=marker_size,
+        markevery=max(len(time)//20, 1)
+    )
+    custom_lines.append(Line2D([0], [0], color=colors[1], linestyle='--',
+                               linewidth=line_width, marker=markers[1], markersize=marker_size))
+
+    # 图例设置
+    plt.legend(custom_lines, ['MPC', 'RB'], loc='upper right', frameon=False, fontsize=legend_fontsize, ncol=2)
     
-    # 坐标轴范围和刻度
+    # 坐标轴设置
+    plt.xlabel('Time (s)', fontsize=8)
+    plt.ylabel('Compressor Power (W)', fontsize=8)
+    plt.xticks(fontsize=6)
+    plt.yticks(fontsize=6)
     plt.ylim(0, 3100)
     plt.xlim(time[0], time[-1])
-    plt.xticks(fontsize=10)
-    plt.yticks(fontsize=10)
+    plt.grid(True, linestyle=':', linewidth=0.4, alpha=0.7)
 
-    # 网格线
-    plt.grid(which='major', linestyle=':', linewidth=0.6, alpha=0.8)
+    ax = plt.gca()  # 获取当前坐标轴
+    # 启用小刻度
+    ax.minorticks_on()
 
-    # 去掉顶部和右侧边框
-    ax = plt.gca()
-    ax.spines['top'].set_visible(False)
-    ax.spines['right'].set_visible(False)
-
-    # 图例
-    plt.legend(loc='upper right', fontsize=10, frameon=False)
-
-    # 紧凑布局
+    # 紧凑布局与保存
     plt.tight_layout()
-
-    # 保存图片
-    plt.savefig("plot/caseII/comp_power.png", dpi=600, bbox_inches='tight')
-
+    plt.savefig(save_path, dpi=600)
     plt.show()
 
 def delta_comp_power(comp_power_MPC):
@@ -196,13 +270,13 @@ def plot_data():
     time_I, comp_power_MPC_I, temp_MPC_I, SOH_loss_MPC_I, comp_power_RB_I, temp_RB_I, SOH_loss_RB_I = load_dataI()
     time_II, comp_power_MPC_II, temp_MPC_II, SOH_loss_MPC_II, comp_power_RB_II, temp_RB_II, SOH_loss_RB_II = load_dataII()
     #statics_temp(time, temp_MPC, temp_RB)
-    #plot_temp(time, temp_MPC, temp_RB)
-    #plot_comp_power(time, comp_power_MPC, comp_power_RB)
+    plot_temp(time_II, temp_MPC_II, temp_RB_II, save_path='plot/caseII/temp.png')
+    plot_comp_power(time_II, comp_power_MPC_II, comp_power_RB_II, save_path='plot/caseII/comp_power.png')
     #plot_comparison(time, temp_MPC, temp_RB)
     #delta_comp_power_MPC = delta_comp_power(comp_power_MPC)
     #calculate_comp_power(comp_power_MPC, comp_power_RB)
     #calculate_SOH_loss(SOH_loss_MPC, SOH_loss_RB)
     #plot_comp_power_SOH_loss(time, comp_power_MPC, comp_power_RB, SOH_loss_MPC, SOH_loss_RB)
-    plot_SOH_loss(time_I, SOH_loss_MPC_I, SOH_loss_RB_I, SOH_loss_MPC_II, SOH_loss_RB_II)
+    #plot_SOH_loss(time_I, SOH_loss_MPC_I, SOH_loss_RB_I, SOH_loss_MPC_II, SOH_loss_RB_II)
 if __name__ == "__main__":
     plot_data()
